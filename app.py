@@ -182,13 +182,7 @@ def main_app():
             prompt = f"""
             You are a career assistant. From the following resume content, extract all the relevant professional skills.
             Include programming languages, tools, technologies, frameworks, cloud services, and soft skills.
-            Return the result as a clean comma-separated list with no extra commentary.
-
-            Resume:
-            \"\"\"
-            {resume_text}
-            \"\"\"
-            """
+            Could you return the result as a clean comma-separated list with no extra commentary? Resume:\"\"\"{resume_text}\"\"\""""
 
             try:
                 # response = model.generate_content(prompt)
