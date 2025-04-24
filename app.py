@@ -6,14 +6,12 @@ from dotenv import load_dotenv
 import time
 import re
 import PyPDF2
-import spacy
 import docx
 # Load environment variables
 load_dotenv()
 # Initialize session state for page control
 if 'intro_shown' not in st.session_state:
     st.session_state.intro_shown = False
-
 
 
 def render_enhanced_flowchart(steps):
@@ -177,64 +175,32 @@ def main_app():
     # Title
     st.title("Career Path Oracle 🧙‍♂️")
 
-    with st.expander("📄 Upload your resume for instant career suggestions and pathways"):
-        
-        # Define function to extract skills from text
-        def extract_skills(text):
-            # Load spaCy NLP model
-            nlp = spacy.load("en_core_web_sm")
-            # Define a list of common skills in tech or career fields (you can expand this list)
-            skill_keywords = [
-            # Programming Languages
-            "Python", "Java", "JavaScript", "TypeScript", "C", "C++", "C#", "R", "Go", "Ruby", "Swift", "Kotlin", "PHP", "Scala", "Rust",
-
-            # Data Science & Machine Learning
-            "Machine Learning", "Deep Learning", "Data Science", "Data Analysis", "NLP", "Computer Vision", "Statistical Modeling",
-            "Data Mining", "Model Deployment", "Time Series Analysis", "Recommendation Systems", "Predictive Analytics",
-            "TensorFlow", "Keras", "Scikit-learn", "PyTorch", "XGBoost", "LightGBM", "OpenCV", "NLTK", "Hugging Face",
-
-            # Databases
-            "SQL", "MySQL", "PostgreSQL", "MongoDB", "SQLite", "Oracle", "Firebase", "Redis", "Cassandra", "Elasticsearch",
-
-            # Web Development
-            "HTML", "CSS", "JavaScript", "React", "Angular", "Vue.js", "Next.js", "Node.js", "Express", "Django", "Flask",
-            "Bootstrap", "jQuery", "SASS", "Tailwind CSS", "REST APIs", "GraphQL",
-
-            # DevOps & Cloud
-            "AWS", "Azure", "Google Cloud", "GCP", "Docker", "Kubernetes", "Jenkins", "GitHub Actions", "CI/CD", "Terraform", "Ansible",
-            "CloudFormation", "Linux", "Bash", "Shell Scripting", "Nginx", "Apache", "Vagrant",
-
-            # Tools & Platforms
-            "Git", "GitHub", "Bitbucket", "GitLab", "JIRA", "Notion", "Trello", "Confluence", "Slack", "Zoom", "VS Code", "Jupyter",
-            "Tableau", "Power BI", "Excel", "Google Sheets", "Looker", "Figma", "Canva", "Photoshop", "Illustrator",
-
-            # Agile / Methodologies / Soft Skills
-            "Agile", "Scrum", "Kanban", "Waterfall", "DevOps", "Design Thinking", "Project Management", "Time Management",
-            "Communication", "Problem Solving", "Leadership", "Teamwork", "Critical Thinking",
-
-            # Mobile App Development
-            "Android", "iOS", "React Native", "Flutter", "Swift", "Kotlin", "Xcode", "Firebase",
-
-            # Testing / Quality Assurance
-            "Selenium", "Postman", "PyTest", "Unit Testing", "Integration Testing", "Jest", "Mocha", "Cypress", "TestNG",
-
-            # Cybersecurity (Optional if needed)
-            "Cybersecurity", "Penetration Testing", "Ethical Hacking", "Nmap", "Wireshark", "Metasploit", "Burp Suite", "OWASP",
-
-            # Additional & Emerging Tech
-            "ChatGPT", "LLM", "LangChain", "Prompt Engineering", "Blockchain", "Web3", "Solidity", "Smart Contracts", "AR/VR", "IoT"
-            ]
-
+    with st.expander("📄 Upload your resume for instant career suggestions and pathways",expanded=False):     
+        uploaded_file = st.file_uploader("Upload your resume (PDF or DOCX)", type=["pdf", "docx"])
+        def extract_skills(resume_text):
             
-            # Use NLP to identify named entities (skills)
-            doc = nlp(text)
-            
-            skills = set()  # Use a set to avoid duplicates
-            for ent in doc.ents:
-                if ent.text in skill_keywords:
-                    skills.add(ent.text)
-            
-            return list(skills)
+            prompt = f"""
+            You are a career assistant. From the following resume content, extract all the relevant professional skills.
+            Include programming languages, tools, technologies, frameworks, cloud services, and soft skills.
+            Return the result as a clean comma-separated list with no extra commentary.
+
+            Resume:
+            \"\"\"
+            {resume_text}
+            \"\"\"
+            """
+
+            try:
+                # response = model.generate_content(prompt)
+                response = genai.GenerativeModel("gemini-2.0-flash").generate_content(prompt)
+                # Clean and split the response into a list
+                raw_output = response.text.strip()
+                skills = [skill.strip() for skill in raw_output.split(",") if skill.strip()]
+                return skills
+            except Exception as e:
+                print("Error during Gemini skill extraction:", e)
+                return []
+
 
         # Function to read PDF file
         def read_pdf(file):
@@ -263,44 +229,56 @@ def main_app():
         # Streamlit UI for file upload
         st.markdown("Resume Analyzer for Career Pathways")
 
-        uploaded_file = st.file_uploader("Upload your resume (PDF or DOCX)", type=["pdf", "docx"])
-
-        if uploaded_file:
-            # Extract text from uploaded file
+        # Check and process only once
+        if uploaded_file and "resume_processed" not in st.session_state:
             if uploaded_file.type == "application/pdf":
                 resume_text = read_pdf(uploaded_file)
             elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
                 resume_text = read_docx(uploaded_file)
-            
-            # Extract skills from the resume text
+            else:
+                resume_text = ""
+
             skills = extract_skills(resume_text)
-            
             if skills:
-                st.write(f"Mentioned Skills in resume: {', '.join(skills)}")
-                
-                # Get career suggestions based on the skills
                 career_paths = get_career_paths(skills)
 
+            # Save in session state
+            st.session_state.resume_text = resume_text
+            st.session_state.skills = skills
+            st.session_state.career_paths = career_paths
+            st.session_state.resume_processed = True
 
-                placeholder = st.empty()
-                displayed_text = ""
+            if "resume_processed" in st.session_state:
+                skills = st.session_state.skills
+                career_paths = st.session_state.career_paths
 
-                # Word-by-word streaming
-                blocks = re.split(r"(?<=\n)\n+", career_paths.strip())
-                for block in blocks:
-                    block = block.strip()
-                    words = block.split(" ")
-                    for word in words:
-                        displayed_text += word + " "
+            
+                if skills:
+                    st.write(f"Mentioned Skills in resume: {', '.join(skills)}")               
+                    # Get career suggestions based on the skills
+                    # career_paths = get_career_paths(skills)
+                    placeholder = st.empty()
+                    displayed_text = ""
+                    # Word-by-word streaming
+                    blocks = re.split(r"(?<=\n)\n+", career_paths.strip())
+                    for block in blocks:
+                        block = block.strip()
+                        words = block.split(" ")
+                        for word in words:
+                            displayed_text += word + " "
+                            placeholder.markdown(displayed_text + "▌", unsafe_allow_html=True)
+                            time.sleep(0.01)
+                        displayed_text += "\n\n"
                         placeholder.markdown(displayed_text + "▌", unsafe_allow_html=True)
-                        time.sleep(0.01)
-                    displayed_text += "\n\n"
-                    placeholder.markdown(displayed_text + "▌", unsafe_allow_html=True)
-                    time.sleep(0.1)   
-                placeholder.markdown(displayed_text, unsafe_allow_html=True)
-                # st.write(f"Suggested Career Paths: \n{career_paths}")
-            else:
-                st.write("No skills were identified in your resume.")
+                        time.sleep(0.1)   
+                    placeholder.markdown(displayed_text, unsafe_allow_html=True)
+                else:
+                    st.write("No skills were identified in your resume.")
+            # Optional reset button
+            if st.button("🔁 Reset Resume Upload"):
+                for key in ["resume_text", "skills", "career_paths", "resume_processed"]:
+                    st.session_state.pop(key, None)
+                st.rerun()
 
 
 
@@ -346,9 +324,6 @@ def main_app():
         with st.chat_message(msg["role"]):
             if msg.get("type") == "flowchart": render_enhanced_flowchart(msg["data"]) 
             else:st.markdown(msg["text"], unsafe_allow_html=True)
-    # for message in st.session_state.chat_history: 
-    #     with st.chat_message(message["role"]): 
-    #         if message.get("type") == "flowchart": render_enhanced_flowchart(message["data"]) 
 
 
     # Function to use Gemini to generate job roles dynamically
@@ -376,20 +351,6 @@ def main_app():
         steps = response.text.strip().split("\n")
         return steps
 
-    # Function to render flowchart with enhanced colors and shapes
-    # def render_enhanced_flowchart(steps):
-    #     dot = graphviz.Digraph(format='png', engine='dot')
-
-    #     # Loop through the steps and assign rectangular shapes and fill colors
-    #     for idx, step in enumerate(steps):
-    #         dot.node(f"step{idx}", step, shape='rectangle', style='filled', fillcolor="#4e5a75", fontcolor="white", width="2")
-
-    #         # Create edges between nodes if it's not the first node
-    #         if idx > 0:
-    #             dot.edge(f"step{idx-1}", f"step{idx}")
-
-    #     # Render the flowchart in Streamlit
-    #     st.graphviz_chart(dot)
 
     # User input
     prompt = st.chat_input("Ask anything about your career path...")
