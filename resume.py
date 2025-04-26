@@ -76,7 +76,7 @@ def resume_analyzer():
     uploaded_file = st.file_uploader("Upload your resume (PDF or DOCX)", type=["pdf", "docx"])
     if uploaded_file:
         with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
+            with st.spinner("Analyzing resume..."):
                 if uploaded_file.type == "application/pdf":
                     resume_text = read_pdf(uploaded_file)
                 elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
