@@ -1,7 +1,8 @@
 streamlit
-google-generativeai
+streamlit-option-menu
 python-dotenv
+google-generativeai
 PyPDF2
-spacy
 python-docx
+numpy
 graphviz
