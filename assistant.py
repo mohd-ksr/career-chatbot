@@ -158,8 +158,8 @@ def main_app():
                     # Flowchart
                     if steps:
                         render_enhanced_flowchart(steps)
-
-                    
+                    st.session_state.chat_history.append({"role": "assistant", "text": full_text})
+                    st.session_state.chat_history.append({ "role": "assistant", "type": "flowchart", "data": steps })
                 else:
                     full_text = (
                     "I'm here to assist you with career guidance, job preparation, learning roadmaps, "
@@ -169,8 +169,8 @@ def main_app():
                     "Please feel free to ask me anything related to your career path."
                     )
                     st.markdown(full_text)
-        st.session_state.chat_history.append({"role": "assistant", "text": full_text})
-        st.session_state.chat_history.append({ "role": "assistant", "type": "flowchart", "data": steps })
+                    st.session_state.chat_history.append({"role": "assistant", "text": full_text})
+        
         
 
 
